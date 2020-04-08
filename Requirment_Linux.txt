@@ -1,0 +1,6 @@
+Linux 16.04
+$ sudo add-apt-repository ppa:deadsnakes/ppa
+$ sudo apt-get update
+$ sudo apt-get install python3.8 python3-tk
+Linux 18.04:
+$ sudo apt-get install python3.8 python3-tk

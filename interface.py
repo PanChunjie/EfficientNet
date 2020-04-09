@@ -2,10 +2,14 @@ import tkinter as tk
 import cv2 as cv
 from PIL import Image, ImageTk
 from tkinter import messagebox, ttk
+import tkinter.font as font
 import time
 import random
 import os
 import sys
+import subprocess
+import shlex
+
 class Application(tk.Frame):
     def __init__(self, master = None):
 
@@ -16,37 +20,41 @@ class Application(tk.Frame):
         self.photo_index = 0  # the index of photo in snapshot folder
         self.sw = self.winfo_screenwidth()
         self.sh = self.winfo_screenheight()
-
-        self.wx = 800
-        self.wh = 600
+        self.wx = 800  # TODO: change the value to screen size after we finish design
+        self.wh = 600  # TODO: change the value to screen size after we finish design
         self.window_geo()
         self.creat_widgets()
-
         self.capture = VideoCapture(0)
-        #self.master.mainloop()
 
     def window_geo(self):
         self.master.geometry("%dx%d+%d+%d" % (self.wx, self.wh, (self.sw - self.wx) / 2, (self.sh - self.wh) / 2 - 100))
-        #self.master.geometry("800x600")
 
     def creat_widgets(self):
-        self.tab = ttk.Notebook(self.master)
+        self.tab = ttk.Notebook(self.master, height = int(self.wh*0.9))
         self.tab_home = ttk.Frame(self.tab)
         self.tab_photo = ttk.Frame(self.tab)
+        self.tab_setting = ttk.Frame(self.tab)
         self.tab.add(self.tab_home, text = 'Home')
         self.tab.add(self.tab_photo, text= 'Album')
-        self.tab.pack(expand = 1, fill = 'both')
+        self.tab.add(self.tab_setting, text='Setting')
+        self.tab.pack(side = 'top', fill = 'x')
+
+        self.alert_label = tk.Label(self.master, text = 'Alert: ******', height = int(self.wh*0.1), width=int(self.wx*0.8))
+        self.alert_label.pack(side = 'top')
+
         ###### widgets in first tab ######
-        self.canvas = tk.Canvas(self.tab_home, bg='black', height=self.wh*0.9, width=self.wx*0.8)
+        self.canvas = tk.Canvas(self.tab_home, bg='black', height=self.wh*0.8, width=self.wx*0.8)
         self.canvas.pack(anchor = 'n')
         self.creat_snapshot_btn()
+
         ###### widgets in second tab ######
-        self.label = tk.Label(self.tab_photo, height = int(self.wh*0.9), width=int(self.wx*0.8))
+        self.label = tk.Label(self.tab_photo, height = int(self.wh*0.8), width=int(self.wx*0.8))
         self.label.pack()
         self.creat_album_btn()
         self.tab.bind("<<NotebookTabChanged>>", lambda event:self.show_photos(event, index=0))
 
-
+        ###### widgets in second tab ######
+        self.creat_setting_btn()
 
     def show_video(self):
         ret, frame = self.capture.get_frame()
@@ -63,26 +71,37 @@ class Application(tk.Frame):
     def creat_snapshot_btn(self):
         self.snapshot_btn = tk.Button(self.tab_home, text='shot', width = int(self.wx*0.2/10), height = int(self.wh*0.1/10),
                                        bg = 'green',command = lambda:self.snapShot())
-        # print(int(self.wx*0.2), int(self.wh*0.1))
         self.snapshot_btn.pack()
-        #button3 = tk.Button(self, text="Button3", width=16, height=60)
-        #button3.pack()
+
 
     def creat_album_btn(self):
         self.album_frame = tk.Frame(self.tab_photo, height = int(self.wh*0.1))
         self.album_frame.pack(fill='x', side = 'top')
 
-        self.album_pre_btn = tk.Button(self.album_frame, text='Previous',  width = int(self.wx*0.2/10), height = int(self.wh*0.1/10),
+        self.album_pre_btn = tk.Button(self.album_frame, text='Previous',  width = int(self.wx*0.1/10), height = int(self.wh*0.1/10),
                                       command = lambda:self.show_photos(index = -1))
-        self.album_next_btn = tk.Button(self.album_frame, text='Next', width=int(self.wx * 0.2 / 10), height=int(self.wh * 0.1 / 10),
+        self.album_next_btn = tk.Button(self.album_frame, text='Next', width=int(self.wx * 0.1 / 10), height=int(self.wh * 0.1 / 10),
                                       command=lambda: self.show_photos(index = 1))
-        col, row = self.album_frame.grid_size()
-        print('col:',col, 'row', row)
+
         self.album_pre_btn.pack(side = 'left', padx = int(self.wh * 0.2))
         self.album_next_btn.pack(side = 'right', padx = int(self.wh * 0.2))
-        #self.album_pre_btn.grid(row = 0, column = 0,  sticky = 'n', padx = int(self.wh * 0.2))
-        #root.grid_columnconfigure(col, minsize=20)
-        #self.album_next_btn.grid(row = 0, column = 1,  stick = 'n', padx = int(self.wh * 0.2))
+
+    def creat_setting_btn(self):
+        print('setting')
+        setting_font = font.Font(size=int(self.wx*0.1/6), weight = 'bold', family='Helvetica')
+        self.power_off_btn = tk.Button(self.tab_setting, text='Power Off', font = setting_font,
+                                       width=int(self.wx * 0.1/2),height=int(self.wh * 0.1/15),
+                                      command=lambda: self.power_off())
+        self.power_off_btn.grid(row=0, column=0)
+        self.tab_setting.grid_rowconfigure(0, weight=1)
+        self.tab_setting.grid_columnconfigure(0, weight=1)
+
+    def power_off(self):
+        if sys.platform.startswith('linux'):
+            cmd = shlex.split("sudo shutdown -h now")
+            subprocess.call(cmd)
+        elif sys.platform.startswith('win32') or sys.platform.startswith('cygwin'):
+            os.system('shutdown /p')
 
     def show_photos(self, event = None, index = 0):
         index = self.photo_index + index
@@ -119,6 +138,13 @@ class Application(tk.Frame):
                                                    localTime.tm_hour, localTime.tm_min, localTime.tm_sec))\
                +str(random.randint(1000,9999)) + '.' + suffix
 
+
+    def chang_alert(self, text):
+        """
+        Use this function to change alert
+        """
+        self.alert_label['text'] = text
+
     def snapShot(self):
         ret, frame = self.capture.get_frame()
         if not ret:
@@ -133,7 +159,6 @@ class Application(tk.Frame):
         if not save_status:
             self.creat_messagebox('Save Photo', 'Fail to save')
         self.creat_messagebox('Save Photo', 'Save successfully')
-
 
     def creat_messagebox(self, title = None, message = None):
         self.master.messagebox = tk.messagebox.showinfo(title,message)
@@ -162,13 +187,4 @@ root = tk.Tk()
 app = Application(master = root)
 app.show_video()
 app.mainloop()
-
-
-#
-#
-# t = threading.Thread(target=show_video())
-# t.start()
-
-
-
 cv.destroyAllWindows()
